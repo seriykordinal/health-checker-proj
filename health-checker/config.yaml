@@ -1,0 +1,7 @@
+urls:
+  - http://localhost:8081
+  - http://localhost:8082
+
+health_path: /health
+request_timeout: 3s
+max_concurrency: 5

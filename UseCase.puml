@@ -1,0 +1,17 @@
+@startuml UseCase
+left to right direction
+actor Пользователь as User
+actor Администратор as Admin
+
+rectangle "Интернет-магазин" {
+  usecase "Просмотр товаров" as UC1
+  usecase "Оформление заказа" as UC2
+  usecase "Оплата" as UC3
+  usecase "Управление товарами" as UC4
+}
+
+User --> UC1
+User --> UC2
+UC2 ..> UC3 : <<include>>
+Admin --> UC4
+@enduml
