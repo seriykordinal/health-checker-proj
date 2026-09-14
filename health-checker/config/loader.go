@@ -9,10 +9,11 @@ import (
 )
 
 type yamlConfig struct {
-	URLs           []string `yaml:"urls"`
-	HealthPath     string   `yaml:"health_path"`
-	RequestTimeout string   `yaml:"request_timeout"` // "5s", "1m" и т.п.
-	MaxConcurrency int      `yaml:"max_concurrency"`
+	URLs                []string `yaml:"urls"`
+	HealthPath          string   `yaml:"health_path"`
+	RequestTimeout      string   `yaml:"request_timeout"`       // "5s", "1m" и т.п.
+	HealthCheckInterval string   `yaml:"health_check_interval"` // "5s", "1m" и т.п.
+	MaxConcurrency      int      `yaml:"max_concurrency"`
 }
 
 func LoadFromYAML(path string) (*Config, error) {
@@ -38,6 +39,14 @@ func LoadFromYAML(path string) (*Config, error) {
 			return nil, fmt.Errorf("некорректный request_timeout: %w", err)
 		}
 		b.RequestTimeout(d)
+	}
+
+	if raw.HealthCheckInterval != "" {
+		d, err := time.ParseDuration(raw.HealthCheckInterval)
+		if err != nil {
+			return nil, fmt.Errorf("некорректный health_check_interval: %w", err)
+		}
+		b.HealthCheckInterval(d)
 	}
 
 	if raw.MaxConcurrency > 0 {

@@ -1,0 +1,53 @@
+@startuml HealthChecker_Activity
+
+title Health Checker - Activity Diagram (Health Check Process Flow)
+
+skinparam activity {
+    BackgroundColor #LightBlue
+    BorderColor #333
+    ArrowColor #333
+}
+
+start
+:Load Balancer отправляет\nhealthcheck запрос;
+
+:Получить запрос на\nхеалтчек;
+
+:Инициировать проверку\nдля всех сервисов;
+
+fork
+    :Проверить Service-1;
+    :Выполнить TCP пробы\nдля Service-1;
+    :Выполнить скрипты\nдля Service-1;
+    :Получить результаты\nService-1;
+fork again
+    :Проверить Service-2;
+    :Выполнить TCP пробы\nдля Service-2;
+    :Выполнить скрипты\nдля Service-2;
+    :Получить результаты\nService-2;
+fork again
+    :Дополнительные проверки\n(опционально);
+end fork
+
+:Логировать результаты\nпроверок;
+
+:Агрегировать результаты\nвсех сервисов;
+
+if (Все проверки успешны?\n(exit code 0 для всех)) then (ДА)
+    :Установить статус\n= HEALTHY;
+    :Вернуть HTTP 200 OK;
+else (НЕТ)
+    :Отменить оставшиеся\nпроцессы (early short-circuit);
+    :Установить статус\n= UNHEALTHY;
+    :Вернуть HTTP 504\nGateway Timeout;
+endif
+
+:Отправить ответ\nLoad Balancer;
+
+:Кэшировать результат\n(Singleflight caching);
+
+:Логировать финальный статус;
+
+stop
+
+@enduml

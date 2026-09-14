@@ -1,17 +1,45 @@
-@startuml UseCase
-left to right direction
-actor Пользователь as User
-actor Администратор as Admin
+@startuml Monitoring_UseCase
+title Monitoring System - Use Case Diagram
 
-rectangle "Интернет-магазин" {
-  usecase "Просмотр товаров" as UC1
-  usecase "Оформление заказа" as UC2
-  usecase "Оплата" as UC3
-  usecase "Управление товарами" as UC4
+skinparam actorBorderColor #333
+skinparam usecaseBorderColor #333
+skinparam usecase {
+    BackgroundColor #LightBlue
+    BorderColor #333
+    ArrowColor #333
 }
 
-User --> UC1
-User --> UC2
-UC2 ..> UC3 : <<include>>
-Admin --> UC4
+actor "Администратор" as Admin
+
+
+usecase "Настройка конфигурации" as UC1
+usecase "Настройка URLs" as UC2
+usecase "Настройка пути\n для проверки" as UC3
+usecase "Настройка времени ожидания\n ответа от сервер" as UC4
+usecase "Настройка количества\n паралельных проверок" as UC5
+
+
+rectangle "Health Checker System" {
+    usecase "Запуск сервиса" as HC1
+    usecase "Опрос здорровья сервисов\n deep= true" as HC2
+
+}
+
+rectangle "Tracer System" {
+    usecase "Запуск сервиса" as T1
+    usecase "Получение трейсов от сервисов\n через отдельный клиент" as T3
+
+}
+
+
+Admin --> UC1 
+Admin --> T1
+Admin --> HC1
+
+
+UC1 ..> UC2: <includes> 
+UC2 <.. UC3: <extends>
+UC2 <.. UC4: <extends>
+UC2 <.. UC5: <extends>
+
 @enduml
