@@ -21,25 +21,27 @@ usecase "Настройка количества\n паралельных про
 
 rectangle "Health Checker System" {
     usecase "Запуск сервиса" as HC1
-    usecase "Опрос здорровья сервисов\n deep= true" as HC2
+    usecase "Просмотр состояния сервисов" as HC2
 
 }
 
-rectangle "Tracer System" {
-    usecase "Запуск сервиса" as T1
-    usecase "Получение трейсов от сервисов\n через отдельный клиент" as T3
+' rectangle "Tracer System" {
+'     usecase "Запуск сервиса" as T1
+'     usecase "Просмотр трейсов" as T2
 
-}
+' }
 
 
 Admin --> UC1 
-Admin --> T1
 Admin --> HC1
+Admin --> HC2
+' Admin --> T1
+' Admin --> T2
 
 
 UC1 ..> UC2: <includes> 
-UC2 <.. UC3: <extends>
-UC2 <.. UC4: <extends>
-UC2 <.. UC5: <extends>
+UC1 <.. UC3: <extends>
+UC1 <.. UC4: <extends>
+UC1 <.. UC5: <extends>
 
 @enduml

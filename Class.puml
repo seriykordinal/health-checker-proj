@@ -1,0 +1,207 @@
+@startuml url_health_checker_classes
+skinparam backgroundColor #FEFEFE
+skinparam ClassBackgroundColor #E8F4F8
+skinparam ClassBorderColor #0066BB
+skinparam ArrowColor #0066BB
+
+title UML2: Диаграмма классов - Сервис проверки URL с Builder паттерном
+
+' ==================== КОНФИГУРАЦИЯ ====================
+class Config {
+    -urls: []string
+    -port: int
+    -timeout: Duration
+    -interval: Duration
+    -logLevel: string
+    
+    +GetURLs(): []string
+    +GetPort(): int
+    +GetTimeout(): Duration
+}
+
+' ==================== BUILDER ====================
+class URLCheckerBuilder {
+    -config: *Config
+    
+    +NewURLCheckerBuilder(): *URLCheckerBuilder
+    +WithURLs(urls []string): *URLCheckerBuilder
+    +WithPort(port int): *URLCheckerBuilder
+    +WithTimeout(timeout Duration): *URLCheckerBuilder
+    +WithInterval(interval Duration): *URLCheckerBuilder
+    +WithLogLevel(level string): *URLCheckerBuilder
+    +Build(): (*URLCheckerService, error)
+    -validate(): error
+}
+
+' ==================== СЕРВИС ====================
+class URLCheckerService {
+    -config: *Config
+    -healthChecker: *HealthChecker
+    -server: *http.Server
+    -handlers: *Handlers
+    -logger: Logger
+    
+    +Start(): error
+    +Stop(): error
+    +GetStatus(): *ServiceStatus
+    -initHandlers(): void
+    -setupRoutes(): void
+}
+
+' ==================== HEALTH CHECKER ====================
+class HealthChecker {
+    -urls: []string
+    -timeout: Duration
+    -interval: Duration
+    -results: map[string]*HealthStatus
+    -mutex: sync.RWMutex
+    -stopChan: chan bool
+    -logger: Logger
+    
+    +NewHealthChecker(urls []string, timeout Duration): *HealthChecker
+    +Start(): void
+    +Stop(): void
+    +CheckURL(url string): *HealthStatus
+    +GetStatus(url string): *HealthStatus
+    +GetAllStatuses(): map[string]*HealthStatus
+    -checkLoop(): void
+    -performCheck(url string): *HealthStatus
+    -isHealthy(statusCode int): bool
+}
+
+' ==================== СТАТУСЫ ====================
+class HealthStatus {
+    -URL: string
+    -IsHealthy: bool
+    -StatusCode: int
+    -ResponseTime: Duration
+    -LastChecked: Time
+    -ErrorMessage: string
+    
+    +String(): string
+    +ToJSON(): []byte
+}
+
+class ServiceStatus {
+    -IsRunning: bool
+    -Port: int
+    -CheckedURLs: int
+    -HealthyURLs: int
+    -HealthCheckStatuses: map[string]*HealthStatus
+    
+    +String(): string
+}
+
+' ==================== HTTP HANDLERS ====================
+class Handlers {
+    -service: *URLCheckerService
+    -healthChecker: *HealthChecker
+    -logger: Logger
+    
+    +NewHandlers(service *URLCheckerService): *Handlers
+    +HealthCheckHandler(w http.ResponseWriter, r *http.Request): void
+    +StatusHandler(w http.ResponseWriter, r *http.Request): void
+    +ListURLsHandler(w http.ResponseWriter, r *http.Request): void
+    +DetailHandler(w http.ResponseWriter, r *http.Request): void
+    -writeJSON(w http.ResponseWriter, status int, data interface{}): void
+    -writeError(w http.ResponseWriter, status int, message string): void
+}
+
+' ==================== СЕРВЕР ====================
+class Server {
+    -httpServer: *http.Server
+    -handlers: *Handlers
+    -port: int
+    -logger: Logger
+    
+    +NewServer(port int, handlers *Handlers): *Server
+    +Start(): error
+    +Shutdown(ctx Context): error
+    +GetAddress(): string
+}
+
+' ==================== ЛОГГЕР ====================
+interface Logger {
+    +Info(msg string, args ...interface{}): void
+    +Error(msg string, args ...interface{}): void
+    +Debug(msg string, args ...interface{}): void
+}
+
+class ConsoleLogger {
+    -level: string
+    
+    +Info(msg string, args ...interface{}): void
+    +Error(msg string, args ...interface{}): void
+    +Debug(msg string, args ...interface{}): void
+}
+
+' ==================== СВЯЗИ ====================
+
+' Builder создает Config
+URLCheckerBuilder *-- Config : создает
+
+' Builder создает Service
+URLCheckerBuilder ..> URLCheckerService : <<create>>
+
+' Service использует Config
+URLCheckerService *-- Config : использует
+
+' Service использует HealthChecker
+URLCheckerService *-- HealthChecker : агрегирует
+
+' Service использует Handlers
+URLCheckerService *-- Handlers : агрегирует
+
+' Service использует Logger
+URLCheckerService --> Logger : использует
+
+' Handlers использует Service
+Handlers --> URLCheckerService : получает данные
+
+' Handlers использует HealthChecker
+Handlers --> HealthChecker : запрашивает статус
+
+' Handlers использует Logger
+Handlers --> Logger : логирует
+
+' HealthChecker содержит HealthStatus
+HealthChecker *-- HealthStatus : содержит
+
+' Service использует Server
+URLCheckerService *-- Server : создает
+
+' Server использует Handlers
+Server --> Handlers : использует
+
+' Service использует ServiceStatus
+URLCheckerService --> ServiceStatus : возвращает
+
+' HealthChecker использует Logger
+HealthChecker --> Logger : логирует
+
+' Logger имеет реализацию
+Logger <|.. ConsoleLogger : реализует
+
+note right of URLCheckerBuilder
+  Паттерн Builder обеспечивает:
+  - Гибкую конфигурацию
+  - Валидацию параметров
+  - Удобную инициализацию
+end note
+
+note right of HealthChecker
+  Отдельный класс для:
+  - Проверки здоровья URL'ов
+  - Кеширования результатов
+  - Фонового мониторинга
+  - Потокобезопасности
+end note
+
+note right of URLCheckerService
+  Главный сервис:
+  - Координирует компоненты
+  - Управляет HTTP сервером
+  - Инициализирует маршруты
+end note
+
+@enduml

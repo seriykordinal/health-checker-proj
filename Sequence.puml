@@ -1,0 +1,93 @@
+@startuml context_signals_interaction
+
+title UML2: Сигналы в контексте с таймером отмены (5 сек)
+
+participant "main()" as main
+participant "context.WithTimeout" as ctx
+participant "Timer" as timer
+participant "http.Client" as client
+participant "Server" as server
+
+main -> ctx: WithTimeout(ctx, 5s)
+activate ctx
+ctx --> main: (ctx Context, cancel CancelFunc)
+deactivate ctx
+
+main -> timer: Запустить таймер на 5 сек
+activate timer
+note right of timer
+  time.NewTimer(5 * time.Second)
+  или встроенный механизм контекста
+end note
+
+main -> client: NewRequestWithContext(ctx)
+activate client
+client --> main: (*http.Request)
+deactivate client
+
+main -> client: Do(request)
+activate client
+client -> server: GET /delay/3
+activate server
+note right of server
+  Сервер обрабатывает запрос
+  Время обработки: 3 сек
+end note
+
+par Ожидание ответа
+  server --> server: Обработка запроса...
+  note right of server
+    t=1s
+    t=2s
+    t=3s - готов ответ
+  end note
+else Таймер отсчитывает
+  timer -> timer: 1s
+  timer -> timer: 2s
+  timer -> timer: 3s
+  timer -> timer: 4s
+  timer -> timer: 5s - ИСТЕК!
+  note right of timer
+    <<signal>>
+    Таймер истекает
+  end note
+end
+
+alt Ответ получен раньше (3s < 5s)
+  server --> client: HTTP 200 OK
+  deactivate server
+  client -> main: Response
+  deactivate client
+  main -> main: response.Body.Read()
+  note right of main
+    Успешная обработка
+  end note
+else Таймер истекает раньше ответа (5s < время_ответа)
+  timer ->> ctx: <<signal>> Done()
+  note right of ctx
+    Сигнал об отмене
+  end note
+  ctx ->> client: <<signal>> context deadline exceeded
+  activate client
+  client -> server: Отменить запрос
+  deactivate client
+  deactivate server
+  server --> client: Соединение закрыто
+  client --> main: Error: context deadline exceeded
+  deactivate client
+  main -> main: Обработка ошибки
+  note right of main
+    Ошибка истечения времени
+  end note
+end
+
+main -> ctx: cancel()
+activate ctx
+note right of ctx
+  Явное освобождение ресурсов
+  (хотя defer уже вызовет)
+end note
+ctx --> main: Контекст отменен
+deactivate ctx
+
+@enduml

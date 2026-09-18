@@ -1,6 +1,6 @@
 @startuml HealthChecker_Activity
 
-title Health Checker - Activity Diagram (Health Check Process Flow)
+title Health Checker - Запуск сервиса 
 
 skinparam activity {
     BackgroundColor #LightBlue
@@ -9,44 +9,53 @@ skinparam activity {
 }
 
 start
-:Load Balancer отправляет\nhealthcheck запрос;
+:Загрузка конфигурации из .yaml;
 
-:Получить запрос на\nхеалтчек;
+:Каждые n секунд проверка всех\nзарегестрированных сервисов;
 
-:Инициировать проверку\nдля всех сервисов;
+:Инициировать проверку\nкаждого сервиса;
 
 fork
     :Проверить Service-1;
-    :Выполнить TCP пробы\nдля Service-1;
-    :Выполнить скрипты\nдля Service-1;
-    :Получить результаты\nService-1;
+    :Обращение по пути\nиз конфигурации<
+    fork
+        :Ответ получен>
+        if (Ответ {status: up}) then (Да)
+            :Установить {status: up};
+        else (НЕТ)
+            :Установить {status: down};
+        endif
+    fork again
+        :Таймайут из конфиигурации\nвышел>
+        :Отмена запроса;
+        :Установить {status: down};
+
+    end fork
+        :Вернуть ответ в HealthChecker; 
 fork again
-    :Проверить Service-2;
-    :Выполнить TCP пробы\nдля Service-2;
-    :Выполнить скрипты\nдля Service-2;
-    :Получить результаты\nService-2;
+   :Проверить Service-2;
+    :Обращение по пути\nиз конфигурации<
+    fork
+        :Ответ получен>
+        if (Ответ {status: up}) then (Да)
+            :Установить {status: up};
+        else (НЕТ)
+            :Установить {status: down};
+        endif
+    fork again
+        :Таймайут из конфиигурации\nвышел>
+        :Отмена запроса;
+        :Установить {status: down};
+
+    end fork
+        :Вернуть ответ в HealthChecker; 
 fork again
-    :Дополнительные проверки\n(опционально);
+    :Дополнительные проверки;
 end fork
 
-:Логировать результаты\nпроверок;
+:Отобразить результаты\nпроверок всех сервисов;
+:Логировать результаты;
 
-:Агрегировать результаты\nвсех сервисов;
-
-if (Все проверки успешны?\n(exit code 0 для всех)) then (ДА)
-    :Установить статус\n= HEALTHY;
-    :Вернуть HTTP 200 OK;
-else (НЕТ)
-    :Отменить оставшиеся\nпроцессы (early short-circuit);
-    :Установить статус\n= UNHEALTHY;
-    :Вернуть HTTP 504\nGateway Timeout;
-endif
-
-:Отправить ответ\nLoad Balancer;
-
-:Кэшировать результат\n(Singleflight caching);
-
-:Логировать финальный статус;
 
 stop
 
